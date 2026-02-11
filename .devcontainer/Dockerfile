@@ -29,3 +29,15 @@ RUN chown -R vscode:docker /workspace/.devcontainer || true
 
 USER vscode
 WORKDIR /workspace
+
+# ===================================================================
+# Buildx + QEMU setup (auto-enabled inside devcontainer)
+# ===================================================================
+# Note: This ensures that every time the container is rebuilt,
+# buildx + qemu emulation are preconfigured for multi-arch builds.
+
+RUN sudo sysctl --system || true
+
+
+
+

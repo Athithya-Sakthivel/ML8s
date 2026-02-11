@@ -34,7 +34,7 @@
     "DOCKER_PROXY_HOST": "",
     "DOCKER_PROXY_PORT": ""
   },
-  "postCreateCommand": "bash src/scripts/bootstrap.sh",
+  "postCreateCommand": "bash src/scripts/bootstrap.sh && bash src/scripts/k3s_cluster.sh",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -42,8 +42,7 @@
         "ms-azuretools.vscode-docker",
         "ms-python.debugpy",
         "ms-python.python",
-        "ms-python.vscode-pylance",
-        "redhat.vscode-yaml"
+        "ms-python.vscode-pylance"
       ],
       "settings": {
         "files.autoSave": "afterDelay",
