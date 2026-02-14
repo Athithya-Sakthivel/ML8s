@@ -1,0 +1,5 @@
+chargeback_id,transaction_id,reason_code,reported_date
+cb80d0ba-0dc4-4561-bae1-1fdb14966c69,6ee3d738-af49-41df-8089-4e04e10c8d37,product_not_received,2025-12-16T13:26:15+00:00
+e8753429-6ef2-4b3e-b869-7ed61a031c39,c982f65a-9d05-4f7f-9cc5-338ac8e38c82,unauthorized,2026-03-01T22:37:32+00:00
+4977c345-8dce-4171-a167-26bfc369e44f,a3b9a6e7-f5a6-4b98-b95c-29de4fff95dd,other,2025-10-25T03:23:06+00:00
+1f5eb959-553e-42da-843f-c0c66f4a6cf3,9b6a3b22-8d21-4c24-99dc-3cadb88c7dd6,unauthorized,2025-12-16T20:08:34+00:00

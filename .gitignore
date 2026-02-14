@@ -2,7 +2,19 @@
 __pycache__/
 *.py[codz]
 *$py.class
-
+ml8s_test_run/mlruns
+ml8s_test_run
+src/test_runsmlruns
+src/test_runsray_datasets/features
+src/test_runsray_datasets/
+src/test_runs
+file:
+pipeline_root
+.pipeline_root
+.mlflow
+ml8s_test_run
+.pipeline_root
+.mlflow
 # C extensions
 *.so
 tmp.md

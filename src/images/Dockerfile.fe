@@ -1,0 +1,81 @@
+# src/images/Dockerfile.fe
+FROM python:3.11.8-slim AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    g++ \
+    git \
+    curl \
+    ca-certificates \
+    libz-dev \
+    libbz2-dev \
+    liblzma-dev \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /wheels
+
+RUN printf "%s\n" \
+    "pip>=23.0" \
+    "setuptools>=65.0" \
+    "wheel" \
+    "numpy==2.2.6" \
+    "pandas==2.3.3" \
+    "pyarrow==12.0.1" \
+    "fsspec==2026.2.0" \
+    "s3fs==2026.2.0" \
+    "gcsfs==2026.2.0" \
+    "adlfs==2026.2.0" \
+    "ray[default]==2.53.0" \
+    "scikit-learn==1.7.2" \
+    "featuretools==1.31.0" \
+    "python-dateutil==2.9.0.post0" \
+    "psutil==5.9.8" \
+    > requirements-fe.txt
+
+RUN python -m pip install --upgrade pip setuptools wheel \
+ && python -m pip wheel --wheel-dir=/wheels/dist -r requirements-fe.txt
+
+FROM python:3.11.8-slim AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    LANG=C.UTF-8
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libgomp1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+ARG USER=ml8s
+ARG UID=1000
+
+RUN groupadd --gid ${UID} ${USER} \
+ && useradd --uid ${UID} --gid ${UID} --create-home --shell /bin/bash ${USER} \
+ && mkdir -p /app
+
+WORKDIR /app
+
+COPY --from=builder /wheels/dist /wheels/dist
+
+RUN python -m pip install --no-cache-dir /wheels/dist/* \
+ && rm -rf /wheels
+
+RUN chown -R ${USER}:${USER} /app
+USER ${USER}
+
+ENV PATH="/home/${USER}/.local/bin:${PATH}" \
+    OMP_NUM_THREADS=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    NUMEXPR_NUM_THREADS=1 \
+    PYTHONHASHSEED=0
+
+ENTRYPOINT ["bash", "-lc"]
+CMD ["python -c \"print('ml8s FE base image ready')\""]

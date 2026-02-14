@@ -1,0 +1,12 @@
+{
+  "pinned_faker_version": "40.4.0",
+  "seed": 42,
+  "size_key": "medium",
+  "n_users": 5050,
+  "n_merchants": 202,
+  "n_transactions": 53239,
+  "n_logins": 50943,
+  "n_devices": 7916,
+  "n_chargebacks": 22,
+  "approx_fraud_rate": 0.01801980198019802
+}

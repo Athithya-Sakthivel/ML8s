@@ -165,3 +165,16 @@ aws eks wait cluster-deleted \
   --region "$REGION"
 
 echo "Cluster successfully deleted."
+
+
+VPC_ID=vpc-024f53132bcbebbbb; \
+SUBNETS=$(aws ec2 describe-subnets --filters Name=vpc-id,Values=$VPC_ID --query "Subnets[0:2].SubnetId" --output text); \
+SG=$(aws ec2 describe-security-groups --filters Name=vpc-id,Values=$VPC_ID --query "SecurityGroups[0].GroupId" --output text); \
+ALB_ARN=$(aws elbv2 create-load-balancer --name perm-test-$(date +%s) --type application --scheme internet-facing --subnets $SUBNETS --security-groups $SG --query 'LoadBalancers[0].LoadBalancerArn' --output text) && \
+WAF_ARN=$(aws wafv2 create-web-acl --name perm-test-waf-$(date +%s) --scope REGIONAL --default-action Allow={} --visibility-config SampledRequestsEnabled=true,CloudWatchMetricsEnabled=true,MetricName=permTest --query 'Summary.ARN' --output text) && \
+aws wafv2 associate-web-acl --web-acl-arn "$WAF_ARN" --resource-arn "$ALB_ARN" && \
+aws wafv2 disassociate-web-acl --resource-arn "$ALB_ARN" && \
+aws wafv2 delete-web-acl --name $(basename $WAF_ARN) --scope REGIONAL --id $(echo $WAF_ARN | awk -F/ '{print $NF}') && \
+aws elbv2 delete-load-balancer --load-balancer-arn "$ALB_ARN" && \
+echo "ALB + WAF SUCCESS" || echo "FAILED (permission or config issue)"
+

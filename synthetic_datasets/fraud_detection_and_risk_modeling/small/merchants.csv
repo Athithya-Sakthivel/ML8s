@@ -1,0 +1,101 @@
+merchant_id,merchant_name,merchant_category,merchant_risk
+m_000000,"Reynolds, Johnson and Mendez",electronics,0.08267605420859543
+m_000001,Cole Group,atm,0.030169855686419944
+m_000002,Smith-Lewis,subscription,0.011588267055571047
+m_000003,Goodwin-Stokes,travel,0.4130447378061896
+m_000004,Ray PLC,insurance,0.1900593810879349
+m_000005,Diaz and Sons,entertainment,0.17567518668262927
+m_000006,Wilson-Lambert,travel,0.3926770912494092
+m_000007,Rose-Fowler,grocery,0.129064653961976
+m_000008,"Price, Long and Wilson",subscription,0.9153553282343634
+m_000009,Bruce-Williamson,travel,0.5434196376035141
+m_000010,"Mccarthy, Evans and Mendez",electronics,0.5463796114934347
+m_000011,Powers LLC,electronics,0.7099684781640283
+m_000012,Allen Inc,utility,0.1552630203949751
+m_000013,Brooks and Sons,travel,0.13441366737883997
+m_000014,"Price, Carlson and Andrews",insurance,0.4659406965982893
+m_000015,Lopez-Reid,grocery,0.13305086556896326
+m_000016,"Ellison, Arias and Thompson",electronics,1.0
+m_000017,Burns and Sons,luxury,0.12318532549596575
+m_000018,Edwards Group,travel,1.0
+m_000019,"Brown, Howard and Smith",entertainment,0.8550324885472462
+m_000020,Lee Group,utility,0.2223113873082644
+m_000021,"Wagner, Simpson and Cohen",utility,0.34912916947092554
+m_000022,Mckinney-Wallace,gaming,0.08663702205106805
+m_000023,Miller Inc,travel,0.529049611572892
+m_000024,Carter LLC,insurance,0.12716661821913186
+m_000025,Medina and Sons,atm,0.07643054465642281
+m_000026,Cunningham-Barton,subscription,0.36084741175372187
+m_000027,Dunn-Wilson,travel,1.0
+m_000028,Adams PLC,insurance,0.525081383859656
+m_000029,Weaver-Sherman,travel,0.5136422633654811
+m_000030,"Alexander, Robinson and Coleman",electronics,0.23613360598325475
+m_000031,"Greer, Potter and Evans",travel,0.012911896359480528
+m_000032,Cole LLC,travel,0.39488045313248704
+m_000033,Gonzales Inc,luxury,0.4284920242915351
+m_000034,Clark Ltd,gaming,0.12917701080908797
+m_000035,"Norris, Callahan and Bishop",utility,0.35331175289830885
+m_000036,Martin-Taylor,subscription,0.3375966895900359
+m_000037,Li Inc,subscription,0.021640540806804623
+m_000038,"Bell, Campbell and Ryan",grocery,0.222838020241252
+m_000039,Werner-Carter,atm,0.4675118169617257
+m_000040,"Adams, Hodge and Duke",gaming,0.14725873507679224
+m_000041,"Ochoa, Taylor and Brady",electronics,0.10036216201938428
+m_000042,Sellers-Riddle,travel,0.8071879699188149
+m_000043,"Martinez, Cline and Wright",subscription,0.4661289421180941
+m_000044,"Morris, Wright and Bridges",luxury,0.32114353314376826
+m_000045,Burns-Ray,insurance,0.015259601457937116
+m_000046,Burton-Brooks,grocery,0.09815406502069136
+m_000047,Schultz Inc,utility,0.35840967494637743
+m_000048,Robertson-Ramirez,utility,1.0
+m_000049,Gibson-Freeman,atm,0.67116243990866
+m_000050,"Smith, Schroeder and Oconnor",entertainment,0.4034059893570024
+m_000051,"Stanton, Reid and Terry",travel,1.0
+m_000052,Flynn Group,grocery,0.8076309028157247
+m_000053,Donaldson and Sons,utility,0.343799865047271
+m_000054,Adams-Clayton,insurance,0.38691151434940246
+m_000055,Kelley-Anderson,atm,0.4006568977080208
+m_000056,Kramer-Shannon,electronics,0.5790725886935167
+m_000057,Williams Ltd,entertainment,0.30483536794060173
+m_000058,Smith-Noble,luxury,0.5090163858046414
+m_000059,Alexander Inc,luxury,1.0
+m_000060,Harris-Barker,electronics,0.45157739420662585
+m_000061,Khan LLC,gaming,0.03208032064704039
+m_000062,Baxter LLC,travel,0.7512174374419134
+m_000063,Pena LLC,utility,0.28810327616364406
+m_000064,Watson Ltd,subscription,0.6832394050898336
+m_000065,Williams Ltd,utility,0.131103952425071
+m_000066,Barber-Fischer,grocery,0.027249502712106244
+m_000067,Rios-Padilla,insurance,0.21341745015391111
+m_000068,Lewis Inc,luxury,0.2904434697051226
+m_000069,Wheeler PLC,electronics,1.0
+m_000070,"Wallace, Smith and Cooper",insurance,0.40816735073816857
+m_000071,Mcneil Group,travel,0.26799191810954803
+m_000072,"Anderson, Jones and Reyes",insurance,0.11483153876625105
+m_000073,"Shaffer, Garcia and Richardson",gaming,0.4438854227121084
+m_000074,Taylor-Ayala,subscription,1.0
+m_000075,May Ltd,gaming,0.7091968675437277
+m_000076,Jones PLC,atm,0.7826298266747644
+m_000077,Bishop and Sons,atm,0.5814938014222396
+m_000078,Bell-Lewis,gaming,0.23751150981015667
+m_000079,"Hernandez, Jenkins and Parks",insurance,0.24767569103796555
+m_000080,Miller Inc,luxury,0.2543176325962418
+m_000081,Goodwin PLC,subscription,0.39533991262502755
+m_000082,"Cruz, Richmond and Edwards",grocery,0.5373234358496515
+m_000083,Wright Ltd,gaming,0.5780875462699829
+m_000084,Wright PLC,grocery,0.010246935673249743
+m_000085,"Griffith, Mitchell and Pugh",gaming,0.7801841029583416
+m_000086,Abbott Ltd,atm,0.33587883581910066
+m_000087,Harris-Lawson,travel,0.8463119216436179
+m_000088,Adkins LLC,entertainment,0.3894622563374339
+m_000089,"Brown, Hurst and Blevins",atm,0.404605735592641
+m_000090,Cruz-Allen,subscription,0.21783096953868036
+m_000091,"Wheeler, Rice and Levine",luxury,0.1008224431996533
+m_000092,Peck-Anderson,travel,0.0621141875745474
+m_000093,"Fisher, Payne and Thompson",entertainment,0.056925965601397045
+m_000094,Best-Townsend,luxury,0.5211345700197644
+m_000095,Matthews Inc,utility,0.5902089943026397
+m_000096,Lewis-Livingston,grocery,1.0
+m_000097,Hunter-Fuller,electronics,0.3974520705159602
+m_000098,"Wang, Henderson and Morales",utility,0.16694427578367693
+m_000099,"Herrera, Jensen and Ramirez",utility,0.18691779081853668

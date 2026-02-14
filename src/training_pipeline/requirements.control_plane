@@ -1,0 +1,5 @@
+flytekit==1.16.13
+flytekitplugins-ray==1.16.13
+flytekitplugins-mlflow==1.16.13
+mlflow==3.9.0
+ray==2.53.0
