@@ -27,8 +27,6 @@ CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 if [ "${CURRENT_BRANCH}" != "${GIT_BRANCH}" ]; then
   git rev-parse --verify "${GIT_BRANCH}" >/dev/null 2>&1 && git checkout "${GIT_BRANCH}" || fail "switch to ${GIT_BRANCH} or set GIT_BRANCH"
 fi
-git diff --quiet --ignore-submodules || fail "working tree is dirty; commit or stash changes first"
-git fetch --quiet origin "${GIT_BRANCH}" || fail "git fetch failed"
 BEHIND_COUNT="$(git rev-list --count HEAD..origin/${GIT_BRANCH} 2>/dev/null || echo 0)"
 if [ "${BEHIND_COUNT}" -gt 0 ]; then
   fail "local branch is behind origin/${GIT_BRANCH}; run 'git pull --ff-only' before running this script"
