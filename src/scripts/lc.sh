@@ -1,99 +1,104 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
-K3S_VERSION="${K3S_VERSION:-v1.28.5+k3s1}"
-KUBECONFIG_PATH="${KUBECONFIG_PATH:-${HOME}/.kube/config}"
-PRELOAD_IMAGES="${PRELOAD_IMAGES:-ghcr.io/fluxcd/source-controller:v1.4.1 ghcr.io/fluxcd/kustomize-controller:v1.4.0 ghcr.io/fluxcd/helm-controller:v0.37.4 ghcr.io/fluxcd/notification-controller:v1.4.0 postgres:15-alpine}"
-
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m'
-
-log_info(){ printf "%b [INFO] %s%b\n" "${GREEN}" "$1" "${NC}"; }
-log_warn(){ printf "%b [WARN] %s%b\n" "${YELLOW}" "$1" "${NC}"; }
-log_error(){ printf "%b [ERROR] %s%b\n" "${RED}" "$1" "${NC}"; }
-
-log_info "ASSUMPTIONS: sudo available; running on Linux; port 6443 accessible locally; script will install k3s binary and run k3s in standalone mode (not systemd); it may stop/uninstall an existing k3s service if version mismatch is detected"
-log_info "CONTRACT: idempotent install of K3S_VERSION=${K3S_VERSION}; kubeconfig written to ${KUBECONFIG_PATH}; images listed in PRELOAD_IMAGES will be pulled into k3s containerd if possible"
-
-if command -v k3s >/dev/null 2>&1; then
-    CURRENT_VERSION="$(k3s --version 2>/dev/null | head -n1 | awk '{print $3}' || true)"
-    if [ "${CURRENT_VERSION:-}" != "$K3S_VERSION" ]; then
-        log_warn "Existing k3s ${CURRENT_VERSION:-unknown} detected, attempting safe uninstall"
-        sudo /usr/local/bin/k3s-uninstall.sh || true
-    else
-        log_info "k3s ${K3S_VERSION} binary already present"
-    fi
+CLUSTER_NAME="${CLUSTER_NAME:-ml8s-local}" 
+KIND_VERSION="${KIND_VERSION:-v0.29.0}"
+K8S_NODE_IMAGE="${K8S_NODE_IMAGE:-kindest/node:v1.33.1}"
+LOCAL_BIN="${LOCAL_BIN:-$HOME/.local/bin}"
+FLUX_IMAGES=(
+  "ghcr.io/fluxcd/source-controller:v1.4.1"
+  "ghcr.io/fluxcd/kustomize-controller:v1.4.0"
+  "ghcr.io/fluxcd/helm-controller:v0.37.4"
+  "ghcr.io/fluxcd/notification-controller:v1.4.0"
+)
+EXTRA_IMAGES=("${EXTRA_IMAGES[@]:-docker.io/qdrant/qdrant:v1.16.0}")
+mkdir -p "$LOCAL_BIN"
+export PATH="$LOCAL_BIN:$PATH"
+log(){ printf "%s %s\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
+require(){ command -v "$1" >/dev/null 2>&1 || { log "fatal: $1 required"; exit 1; } }
+require curl
+require docker
+docker info >/dev/null 2>&1 || { log "fatal: docker daemon not running"; exit 1; }
+OS="$(uname | tr '[:upper:]' '[:lower:]')"
+ARCH="$(uname -m)"
+case "$ARCH" in x86_64|amd64) ARCH="amd64" ;; aarch64|arm64) ARCH="arm64" ;; *) ARCH="amd64" ;; esac
+if ! command -v kind >/dev/null 2>&1; then
+  log "installing kind ${KIND_VERSION}"
+  curl -fsSL "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-${OS}-${ARCH}" -o "${LOCAL_BIN}/kind"
+  chmod +x "${LOCAL_BIN}/kind"
 fi
-
-if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet k3s; then
-    log_warn "systemd-managed k3s is active; attempting to stop and uninstall to ensure standalone deterministic mode"
-    sudo systemctl stop k3s || true
-    sudo /usr/local/bin/k3s-uninstall.sh || true
+if ! command -v kubectl >/dev/null 2>&1; then
+  KUBECTL_VERSION="$(curl -s https://dl.k8s.io/release/stable.txt)"
+  log "installing kubectl ${KUBECTL_VERSION}"
+  curl -fsSL -o "${LOCAL_BIN}/kubectl" "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/${OS}/${ARCH}/kubectl"
+  chmod +x "${LOCAL_BIN}/kubectl"
 fi
-
-log_info "Installing k3s binary without starting systemd service"
-curl -fsSL https://get.k3s.io | INSTALL_K3S_VERSION="$K3S_VERSION" INSTALL_K3S_SKIP_START=true sh -s - --write-kubeconfig-mode 644 --disable traefik --disable servicelb
-
-log_info "Starting k3s in standalone (non-systemd) mode"
-sudo mkdir -p /var/log
-sudo nohup k3s server --disable traefik --disable servicelb > /var/log/k3s-standalone.log 2>&1 &
-echo $! | sudo tee /var/run/k3s-standalone.pid >/dev/null
-
-log_info "Waiting for API readiness (timeout 180s)"
-timeout=180
-elapsed=0
-interval=2
-until sudo k3s kubectl get nodes >/dev/null 2>&1; do
-    if [ $elapsed -ge $timeout ]; then
-        log_error "Timeout waiting for k3s API. Showing last 200 log lines from /var/log/k3s-standalone.log"
-        sudo tail -n 200 /var/log/k3s-standalone.log || true
-        exit 1
+if kind get clusters | grep -q "^${CLUSTER_NAME}$"; then
+  log "deleting existing cluster ${CLUSTER_NAME}"
+  kind delete cluster --name "${CLUSTER_NAME}"
+fi
+log "pulling node image ${K8S_NODE_IMAGE}"
+docker pull "${K8S_NODE_IMAGE}"
+log "creating cluster ${CLUSTER_NAME}"
+cat <<EOF | kind create cluster --name "${CLUSTER_NAME}" --image "${K8S_NODE_IMAGE}" --config=-
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+EOF
+log "waiting for node readiness"
+kubectl wait --for=condition=Ready nodes --all --timeout=180s
+NODES=( $(kind get nodes --name "${CLUSTER_NAME}") )
+if [ "${#NODES[@]}" -eq 0 ]; then log "fatal: no kind nodes found"; exit 1; fi
+for node in "${NODES[@]}"; do
+  log "waiting for containerd to be ready on ${node}"
+  for i in {1..30}; do
+    if docker exec "${node}" sh -c 'command -v ctr >/dev/null 2>&1 && ctr version >/dev/null 2>&1'; then
+      log "containerd ready on ${node}"
+      break
     fi
-    sleep $interval
-    elapsed=$((elapsed + interval))
+    if [ "$i" -eq 30 ]; then log "fatal: containerd not ready on ${node} after timeout"; exit 1; fi
+    sleep 2
+  done
 done
-
-log_info "k3s API is ready"
-
-log_info "Configuring kubeconfig at ${KUBECONFIG_PATH}"
-mkdir -p "$(dirname "$KUBECONFIG_PATH")"
-sudo cp /etc/rancher/k3s/k3s.yaml "$KUBECONFIG_PATH"
-sudo chown "$(id -u):$(id -g)" "$KUBECONFIG_PATH"
-chmod 600 "$KUBECONFIG_PATH"
-
-log_info "Preloading images into k3s containerd runtime"
-read -r -a IMAGES <<< "$PRELOAD_IMAGES"
-for IMG in "${IMAGES[@]}"; do
-    log_info "Processing image: ${IMG}"
-    if sudo k3s ctr -n k8s.io images ls -q | grep -Fxq "${IMG}"; then
-        log_info "Image already present: ${IMG}"
-        continue
+ALL_IMAGES=( "${FLUX_IMAGES[@]}" "${EXTRA_IMAGES[@]}" )
+for node in "${NODES[@]}"; do
+  for img in "${ALL_IMAGES[@]}"; do
+    log "ensuring ${img} on ${node}"
+    if docker exec "${node}" sh -c "ctr -n k8s.io images ls | awk '{print \$1}' | grep -q \"^${img}\$\"" >/dev/null 2>&1; then
+      log "image ${img} already present on ${node}"
+      continue
     fi
-    if sudo k3s ctr -n k8s.io images pull "${IMG}"; then
-        log_info "Successfully pulled: ${IMG}"
+    log "attempting ctr pull ${img} inside ${node}"
+    if docker exec "${node}" sh -c "ctr -n k8s.io images pull --all-platforms ${img}" >/dev/null 2>&1; then
+      log "ctr pull succeeded for ${img} on ${node}"
+      continue
+    fi
+    log "ctr pull failed, falling back to docker save/import for ${img}"
+    if docker pull "${img}"; then
+      docker save "${img}" | docker exec -i "${node}" sh -c "ctr -n k8s.io images import --all-platforms --digests -" && log "imported ${img} into ${node}" || log "warn: import failed for ${img} on ${node}"
     else
-        log_warn "Failed to pull image: ${IMG}"
+      log "warn: docker pull failed for ${img}; skipping"
     fi
+  done
 done
-
-log_info "Verifying cluster access using kubeconfig"
-if kubectl --kubeconfig="$KUBECONFIG_PATH" get nodes >/dev/null 2>&1; then
-    log_info "Cluster reachable"
-else
-    log_error "kubectl cannot reach the cluster; inspect /var/log/k3s-standalone.log"
-    sudo tail -n 200 /var/log/k3s-standalone.log || true
-    exit 1
-fi
-
-log_info "Cluster nodes:"
-kubectl --kubeconfig="$KUBECONFIG_PATH" get nodes -o wide
-
-log_info "Installed images in k3s runtime (first 200 lines):"
-sudo k3s ctr -n k8s.io images ls | sed -n '1,200p' || true
-
-log_info "k3s version: $(k3s --version | head -n1)"
-log_info "Kubeconfig path: ${KUBECONFIG_PATH}"
-log_info "k3s standalone logs: /var/log/k3s-standalone.log"
-log_info "k3s standalone pidfile: /var/run/k3s-standalone.pid"
+log "applying allow-all network policy"
+kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-all
+  namespace: default
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - {}
+  egress:
+    - {}
+EOF
+for node in "${NODES[@]}"; do
+  log "images on ${node}:"
+  docker exec "${node}" sh -c 'ctr -n k8s.io images ls' || true
+done
+log "kind cluster ${CLUSTER_NAME} ready"
