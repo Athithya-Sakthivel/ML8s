@@ -85,3 +85,5 @@ EOF
 
 echo "Cluster ready"
 kubectl get nodes -o wide
+
+

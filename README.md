@@ -1,381 +1,79 @@
-# ML8s
 
-**Deterministic, Kubernetes-native platform for training, evaluating, deploying, and monitoring classical machine learning models — without requiring Kubernetes expertise.**
 
----
-
-## Why ML8s
-
-Classical ML systems (fraud detection, churn prediction, demand forecasting, risk scoring, ranking) are widely used in production, yet their lifecycle remains fragmented:
-
-* Models are trained in notebooks.
-* Deployment requires containerization and Kubernetes knowledge.
-* Evaluation is inconsistent.
-* Drift detection is ad hoc.
-* Reproducibility is weak.
-* Promotion processes lack governance.
-
-ML engineers should not need to understand Kubernetes, Helm, service meshes, or infrastructure primitives to ship production models.
-
-**ML8s solves this by providing a deterministic, config-driven ML lifecycle on Kubernetes.**
-
----
-
-## Vision
-
-Turn classical ML from an artisanal workflow into an infrastructure capability.
-
-ML8s abstracts infrastructure complexity while enforcing:
-
-* Deterministic training
-* Immutable dataset contracts
-* Mandatory evaluation
-* Controlled model promotion
-* Continuous monitoring
-* Reproducibility by design
-
----
-
-## Design Principles
-
-### 1. Deterministic Contracts
-
-Training consumes:
-
-* Immutable dataset snapshot (object store URI)
-* Explicit configuration
-* Fixed random seed
-
-Training produces:
-
-* Versioned model artifact
-* Evaluation report
-* Feature manifest
-* Dataset reference
-* Config snapshot
-
-Reproducible. Auditable. Governable.
-
----
-
-### 2. Infrastructure Abstraction
-
-ML engineers interact with:
-
-```
-ml8s train --config s3://configs/fraud_v3.yaml
-ml8s deploy --model-id fraud_v3_20260211
+```sh
+export GIT_URL="https://github.com/<username>/<repo_name>.git" # Same name used when creating the private repo
+export GIT_TOKEN="ghp_" # Create one with https://github.com/settings/tokens/new
+make setup-flux
 ```
 
-ML8s handles:
+### STEP 1: Setup [Flyte(Kubeflow alternative)](https://flyte.org/kubeflow-alternative) after configuring artifact storage. StateDB is platform-managed via [CNPG](https://cloudnative-pg.io/docs/1.28/).
+> If STORAGE_BACKEND not set, then default miniO will be used.
 
-* Kubernetes Jobs
-* Container orchestration
-* Model packaging
-* Deployments
-* Scaling (HPA)
-* Rollouts (Canary/Blue-Green)
-* Monitoring
-* Rollbacks
+<details>
+<summary>AWS (S3)</summary>
 
-No Kubernetes expertise required.
-
----
-
-### 3. Clear Separation of Responsibilities
-
-| Responsibility              | Owner            |
-| --------------------------- | ---------------- |
-| Raw data cleaning           | Data Engineering |
-| Dataset snapshot publishing | Data Engineering |
-| Model training & evaluation | ML8s             |
-| Deployment & scaling        | ML8s             |
-| Drift monitoring            | ML8s             |
-| Business validation         | ML Team          |
-
----
-
-## Architecture Overview
-
-ML8s operates across four planes:
-
-### 1. Data Plane
-
-* Versioned datasets in object storage (S3/Azure Blob/MinIO)
-* Immutable snapshots
-* Schema validation
-
----
-
-### 2. Training Plane
-
-* Kubernetes Job
-* Optional Feature Engineering (Featuretools)
-* AutoML optimization (FLAML)
-* Deterministic data splits
-* Evaluation + metrics
-* Artifact storage
-* Model registration
-
----
-
-### 3. Serving Plane
-
-* BentoML-based model packaging
-* Kubernetes Deployment
-* Horizontal Pod Autoscaling
-* Canary or Blue-Green rollout
-* Versioned model services
-
----
-
-### 4. Monitoring Plane
-
-* System metrics (latency, error rate)
-* Prediction distribution monitoring
-* Data drift detection (Evidently)
-* Performance degradation tracking
-* Alerting integration
-
----
-
-## How It Works
-
-### 1. Data Engineer publishes dataset
-
-Example:
-
-```
-s3://ml-datasets/fraud/v3/
-  ├── train.parquet
-  ├── validation.parquet
-  ├── schema.json
+```bash
+export ENV=dev
+export STORAGE_BACKEND=s3
+export S3_BUCKET=ml8s-flyte-dev
+export S3_REGION=us-east-1
+export S3_ACCESS_KEY_ID=YOUR_AWS_ACCESS_KEY_ID
+export S3_SECRET_ACCESS_KEY=YOUR_AWS_SECRET_ACCESS_KEY
 ```
 
-Immutable snapshot.
+</details>
 
----
+<details>
+<summary>GCP (GCS)</summary>
 
-### 2. ML Engineer provides config
-
-Example:
-
-```yaml
-dataset_uri: s3://ml-datasets/fraud/v3/
-task: classification
-target_column: is_fraud
-metric: roc_auc
-
-split:
-  strategy: time
-  time_column: transaction_time
-
-feature_engineering:
-  enabled: true
-  max_depth: 2
-  primitives: [sum, mean, count]
-
-automl:
-  engine: flaml
-  time_budget: 600
-  estimators: [lgbm, xgboost]
+```bash
+export ENV=dev
+export STORAGE_BACKEND=gcs
+export GCS_BUCKET=ml8s-flyte-dev
+export GCP_PROJECT_ID=my-gcp-project
+export GCS_SERVICE_ACCOUNT_JSON_PATH=/absolute/path/to/sa-key.json
 ```
 
-No Python code required.
+</details>
 
----
+<details>
+<summary>Azure (Blob)</summary>
 
-### 3. Train
-
+```bash
+export ENV=dev
+export STORAGE_BACKEND=azure
+export AZURE_CONTAINER=ml8s-flyte-dev
+export AZURE_STORAGE_ACCOUNT=myazurestorageaccount
+export AZURE_STORAGE_KEY=YOUR_STORAGE_ACCOUNT_KEY
 ```
-ml8s train --config s3://configs/fraud_v3.yaml
-```
+</details>
 
-ML8s:
 
-* Validates dataset
-* Applies deterministic split
-* Runs Featuretools (optional)
-* Runs FLAML search
-* Evaluates model
-* Generates metrics + report
-* Registers model candidate
 
----
 
-### 4. Deploy
 
-```
-ml8s deploy --model-id fraud_v3_20260211
-```
 
-ML8s:
 
-* Packages model with BentoML
-* Updates Kubernetes Deployment
-* Executes rollout strategy
-* Enables monitoring
-* Supports rollback
 
----
 
-## Supported Workloads
 
-ML8s is optimized for classical tabular ML:
 
-* Fraud detection
-* Churn prediction
-* Credit risk scoring
-* Demand forecasting
-* Dynamic pricing
-* CTR prediction
-* Ranking models
 
-Not designed for:
 
-* Deep learning research
-* Image or large NLP training
-* Custom experimental pipelines
 
----
 
-## Core Capabilities
 
-### Deterministic Training
 
-* Immutable datasets
-* Logged hyperparameters
-* Fixed seeds
-* Full metadata tracking
 
-### Automated Evaluation
 
-* Required metric validation
-* Classification/regression support
-* Stored evaluation artifacts
-* Reproducible splits
 
-### Drift Detection
 
-* Feature drift monitoring
-* Prediction drift monitoring
-* Scheduled evaluation jobs
 
-### Safe Promotion
 
-* Candidate → Production lifecycle
-* Optional approval gates
-* Canary rollout support
-* Automatic rollback capability
 
----
 
-## Model Lifecycle
 
-```
-DATASET PUBLISHED
-        ↓
-TRAIN (Candidate)
-        ↓
-EVALUATE
-        ↓
-PROMOTE
-        ↓
-PRODUCTION
-        ↓
-MONITOR
-        ↓
-RETRAIN (if needed)
-```
 
-All states tracked.
-
----
-
-## Configuration-Driven, Not Code-Driven
-
-ML8s eliminates notebook-to-production friction.
-
-Users do not:
-
-* Write Dockerfiles
-* Build containers
-* Define Kubernetes manifests
-* Configure autoscaling
-* Implement drift pipelines
-
-They only define configuration.
-
----
-
-## Technology Stack
-
-* Kubernetes (AKS / EKS / k3s compatible)
-* FLAML (AutoML engine)
-* Featuretools (optional feature engineering)
-* BentoML (model packaging & serving)
-* Evidently (monitoring & drift detection)
-* Object storage (S3/Azure Blob/MinIO)
-* Prometheus + Grafana (metrics)
-
----
-
-## Why ML8s
-
-Without ML8s:
-
-* Every team builds custom pipelines.
-* Deployment is inconsistent.
-* Reproducibility is weak.
-* Monitoring is fragmented.
-
-With ML8s:
-
-* Standardized ML lifecycle
-* Infrastructure abstraction
-* Deterministic behavior
-* Governance by design
-* Faster productionization
-
----
-
-## Non-Goals
-
-ML8s is not:
-
-* A notebook replacement
-* A research platform
-* A deep learning orchestration system
-* A fully autonomous AI engine
-
-It is a production platform for structured ML systems.
-
----
-
-## Future Roadmap
-
-* Multi-tenant namespaces
-* Policy-driven auto-promotion
-* Feature store integration
-* Model registry UI
-* Lineage tracking
-* Cost-aware retraining triggers
-
----
-
-## Summary
-
-ML8s provides:
-
-* Train with one command
-* Deploy with one command
-* Monitor continuously
-* Govern safely
-* No Kubernetes expertise required
-
-It transforms classical ML from ad hoc workflows into a reliable infrastructure capability.
-
----
 
 
 

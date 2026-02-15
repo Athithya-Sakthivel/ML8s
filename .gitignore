@@ -15,6 +15,11 @@ pipeline_root
 ml8s_test_run
 .pipeline_root
 .mlflow
+flux-key
+*-key
+*-key.pub
+*.agekey
+
 # C extensions
 *.so
 tmp.md

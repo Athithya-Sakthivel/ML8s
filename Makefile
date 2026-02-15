@@ -18,7 +18,7 @@ delete-s3:
 	aws s3 ls
 
 lc:
-	bash utils/lc.sh
+	bash src/scripts/lc.sh
 
 tree:
 	tree -a -I '.git|.venv|repos|__pycache__|venv|commands.sh|production-stack|raw_data|.venv2|archive|tmp.md|docs|models|tmp|raw|chunked'
@@ -37,11 +37,12 @@ index-image:
 	bash apps/index/build_and_push_image.sh
 
 
-init-reranker:
-	python3 infra/generators/gen_reranker.py --generate
 
 setup-flux:
-	python3 infra/scripts/setup_fluxcd.py --auto-push
+	bash src/scripts/flux_setup.sh
+
+init-reranker:
+	python3 infra/generators/gen_reranker.py --generate
 
 inspect-flux:
 	tail -f infra/manifests/flux-system/setup_fluxcd.log
