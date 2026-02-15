@@ -10,15 +10,18 @@ PUSH_PUBLIC_KEY_TO_REPO="${PUSH_PUBLIC_KEY_TO_REPO:-true}"
 TMPDIR="${TMPDIR:-/tmp}"
 AGE_KEY_FILE="${TMPDIR}/age.agekey"
 MANIFEST_DIR="${MANIFEST_DIR:-src/manifests}"
+AGE_VERSION="${AGE_VERSION:-v1.1.1}"
 log(){ printf '%s %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$*"; }
 fail(){ log "ERROR: $*"; exit 1; }
-[ -n "${GIT_URL}" ] || fail "GIT_URL must be set"
-[ -n "${GIT_TOKEN}" ] || fail "GIT_TOKEN must be set"
+if [ -z "${GIT_URL}" ]; then fail "GIT_URL must be set"; fi
+if [ -z "${GIT_TOKEN}" ]; then fail "GIT_TOKEN must be set"; fi
 command -v git >/dev/null 2>&1 || fail "git required"
 command -v kubectl >/dev/null 2>&1 || fail "kubectl required"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
-[ -n "${REPO_ROOT}" ] || fail "must run inside a git repository"
+[ -n "${REPO_ROOT}" ] || fail "must run inside a git repository (cd to repo root)"
 cd "${REPO_ROOT}"
+ASSUMPTIONS=$'ASSUMPTIONS/INVARIANTS:\n- run from repo root\n- working tree must be clean\n- local branch must be up-to-date with origin\n- script will modify src/manifests/ in-place and push using GIT_TOKEN\n- private age key will be written to '"${AGE_KEY_FILE}"$'\n- flux installed or will be downloaded to /usr/local/bin/flux\n'
+log "${ASSUMPTIONS}"
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 if [ "${CURRENT_BRANCH}" != "${GIT_BRANCH}" ]; then
   git rev-parse --verify "${GIT_BRANCH}" >/dev/null 2>&1 && git checkout "${GIT_BRANCH}" || fail "switch to ${GIT_BRANCH} or set GIT_BRANCH"
@@ -70,54 +73,65 @@ if git commit -m "chore: ensure flux-safe skeleton (flux-system + platform)" >/d
 else
   log "no skeleton changes to commit"
 fi
-log "ensuring flux CLI ${FLUX_CLI_VERSION} present"
+log "ensuring flux CLI ${FLUX_CLI_VERSION}"
 if ! command -v flux >/dev/null 2>&1; then
   OS="$(uname | tr '[:upper:]' '[:lower:]')"
+  ARCH="$(uname -m)"
+  case "${ARCH}" in
+    x86_64|amd64) ARCH="amd64" ;;
+    aarch64|arm64) ARCH="arm64" ;;
+    *) ARCH="amd64" ;;
+  esac
   case "${OS}" in
-    linux) ASSET="flux_${FLUX_CLI_VERSION#v}_linux_amd64.tar.gz" ;;
-    darwin) ASSET="flux_${FLUX_CLI_VERSION#v}_darwin_amd64.tar.gz" ;;
+    linux) ASSET="flux_${FLUX_CLI_VERSION#v}_linux_${ARCH}.tar.gz" ;;
+    darwin) ASSET="flux_${FLUX_CLI_VERSION#v}_darwin_${ARCH}.tar.gz" ;;
     *) fail "unsupported os ${OS}" ;;
   esac
   URL="https://github.com/fluxcd/flux2/releases/download/${FLUX_CLI_VERSION}/${ASSET}"
   TMP_TAR="${TMPDIR}/flux-${FLUX_CLI_VERSION}.tar.gz"
   curl -fsSL "${URL}" -o "${TMP_TAR}" || fail "download flux failed"
-  tar -C "${TMPDIR}" -xzf "${TMP_TAR}"
-  mv "${TMPDIR}/flux" /usr/local/bin/flux || fail "move flux failed"
+  tar -C "${TMPDIR}" -xzf "${TMP_TAR}" || fail "extract flux failed"
+  if [ -f "${TMPDIR}/flux" ]; then mv "${TMPDIR}/flux" /usr/local/bin/flux || fail "move flux failed"; else mv "${TMPDIR}/flux-${FLUX_CLI_VERSION#v}/flux" /usr/local/bin/flux || fail "move flux failed"; fi
   chmod +x /usr/local/bin/flux
   log "flux installed to /usr/local/bin/flux"
 else
   log "flux cli found at $(command -v flux)"
 fi
-log "ensure age key at ${AGE_KEY_FILE}"
+log "ensure age-keygen ${AGE_VERSION} present"
+if ! command -v age-keygen >/dev/null 2>&1; then
+  OS="$(uname | tr '[:upper:]' '[:lower:]')"
+  ARCH="$(uname -m)"
+  case "${ARCH}" in
+    x86_64|amd64) ARCH="amd64" ;;
+    aarch64|arm64) ARCH="arm64" ;;
+    *) ARCH="amd64" ;;
+  esac
+  case "${OS}" in
+    linux) AGE_ASSET="age-${AGE_VERSION#v}-linux-${ARCH}.tar.gz" ;;
+    darwin) AGE_ASSET="age-${AGE_VERSION#v}-darwin-${ARCH}.tar.gz" ;;
+    *) fail "unsupported os for age" ;;
+  esac
+  AGE_URL="https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/${AGE_ASSET}"
+  TMP_AGE="${TMPDIR}/age-${AGE_VERSION}.tar.gz"
+  curl -fsSL "${AGE_URL}" -o "${TMP_AGE}" || fail "download age failed"
+  tar -C "${TMPDIR}" -xzf "${TMP_AGE}" || fail "extract age failed"
+  if [ -f "${TMPDIR}/age/age-keygen" ]; then mv "${TMPDIR}/age/age-keygen" /usr/local/bin/age-keygen; elif [ -f "${TMPDIR}/age-keygen" ]; then mv "${TMPDIR}/age-keygen" /usr/local/bin/age-keygen; else fail "age binary not found after extract"; fi
+  chmod +x /usr/local/bin/age-keygen
+  log "age-keygen installed"
+else
+  log "age-keygen present at $(command -v age-keygen)"
+fi
+log "generate or reuse age key at ${AGE_KEY_FILE}"
 if [ -f "${AGE_KEY_FILE}" ]; then
   log "reusing existing age key ${AGE_KEY_FILE}"
 else
-  if ! command -v age-keygen >/dev/null 2>&1; then
-    log "installing age-keygen"
-    AGE_API="https://api.github.com/repos/FiloSottile/age/releases/latest"
-    AGE_TAG="$(curl -fsSL "${AGE_API}" | grep -Po '\"tag_name\":\\s*\"\\K(.*?)(?=\")')"
-    [ -n "${AGE_TAG}" ] || fail "could not find age release"
-    OS="$(uname | tr '[:upper:]' '[:lower:]')"
-    case "${OS}" in
-      linux) AGE_ASSET="age-${AGE_TAG}-linux-amd64.tar.gz" ;;
-      darwin) AGE_ASSET="age-${AGE_TAG}-darwin-amd64.tar.gz" ;;
-      *) fail "unsupported os for age" ;;
-    esac
-    AGE_URL="https://github.com/FiloSottile/age/releases/download/${AGE_TAG}/${AGE_ASSET}"
-    TMP_AGE="${TMPDIR}/age-${AGE_TAG}.tar.gz"
-    curl -fsSL "${AGE_URL}" -o "${TMP_AGE}" || fail "download age failed"
-    tar -C "${TMPDIR}" -xzf "${TMP_AGE}"
-    if [ -f "${TMPDIR}/age/age-keygen" ]; then mv "${TMPDIR}/age/age-keygen" /usr/local/bin/age-keygen; else mv "${TMPDIR}/age-keygen" /usr/local/bin/age-keygen; fi
-    chmod +x /usr/local/bin/age-keygen
-    log "age-keygen installed"
-  fi
   age-keygen -o "${AGE_KEY_FILE}" || fail "age-keygen failed"
 fi
 PUB_LINE="$(grep -i 'public key:' -m1 "${AGE_KEY_FILE}" | sed 's/^[[:space:]]*//')"
 [ -n "${PUB_LINE}" ] || fail "could not extract public key from ${AGE_KEY_FILE}"
 log "public key: ${PUB_LINE}"
 log "running flux bootstrap git (will write flux components under ${MANIFEST_DIR}/flux-system)"
-BOOT_CMD=(flux bootstrap git --url="${GIT_URL}" --branch="${GIT_BRANCH}" --path="${MANIFEST_DIR}/flux-system" --token-auth --username=git --password="${GIT_TOKEN}" --version="${FLUX_CLI_VERSION}" --timeout=2m)
+BOOT_CMD=(flux bootstrap git --url="${GIT_URL}" --branch="${GIT_BRANCH}" --path="${MANIFEST_DIR}/flux-system" --token-auth --username=git --password="${GIT_TOKEN}" --version="${FLUX_CLI_VERSION}" --timeout=5m)
 "${BOOT_CMD[@]}" || fail "flux bootstrap failed"
 SOPS_MANIFEST_DIR="${MANIFEST_DIR}/platform/sops"
 ensure_dir_atomic "${SOPS_MANIFEST_DIR}"
