@@ -14,11 +14,6 @@ log_info(){ echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn(){ echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error(){ echo -e "${RED}[ERROR]${NC} $1"; }
 
-if [ "$EUID" -eq 0 ]; then
-    log_error "Do not run as root"
-    exit 1
-fi
-
 if command -v k3s >/dev/null 2>&1; then
     CURRENT_VERSION=$(k3s --version | head -n1 | awk '{print $3}')
     if [ "$CURRENT_VERSION" != "$K3S_VERSION" ]; then
