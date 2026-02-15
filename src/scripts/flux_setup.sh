@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+rm -rf src/manifests/ && git add src && git commit -m "removed src/manifests/" && git push origin main --force
 
 FLUX_CLI_VERSION="${FLUX_CLI_VERSION:-v2.7.5}"
 SOPS_SECRET_NAME="${SOPS_SECRET_NAME:-sops-age}"
